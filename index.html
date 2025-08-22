@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>تتبع إنجاز المهام — مع مكتبة مهام</title>
+  <style>
+    :root{--bg:#0f172a;--panel:#111827;--muted:#1f2937;--text:#e5e7eb;--text-dim:#9ca3af;--brand:#22c55e;--brand-2:#06b6d4;--danger:#ef4444;--warn:#f59e0b;--radius:14px}
+    *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:linear-gradient(120deg,#0b1023,#121a38);font-family:"Tajawal",system-ui,Segoe UI,Arial;color:var(--text)}
+    .layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+    aside{background:rgba(255,255,255,.02);backdrop-filter:blur(6px);border-inline-end:1px solid rgba(255,255,255,.06);padding:18px;position:sticky;top:0;height:100vh}
+    .brand{display:flex;gap:10px;align-items:center;margin-bottom:18px}
+    .brand .logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--brand-2));display:grid;place-items:center;font-weight:700;color:#001b12}
+    nav a{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;color:var(--text);text-decoration:none;margin:4px 0}
+    nav a.active, nav a:hover{background:rgba(255,255,255,.06)}
+    /* Mobile styles for sidebar */
+    .hamb{display:none} /* Hidden by default on desktop */
+    @media (max-width: 768px) {
+        .layout {
+            grid-template-columns: 1fr; /* Single column layout on small screens */
+        }
+        aside {
+            position: fixed; /* Fixed position so it overlays content */
+            inset: 0 auto 0 0; /* Align to the right (start) */
+            width: 260px;
+            transform: translateX(-100%); /* Hide sidebar off-screen */
+            transition: transform 0.3s ease-in-out;
+            z-index: 100; /* Ensure it's above other content */
+            border-inline-end: none; /* No border when hidden */
+        }
+        aside.active {
+            transform: translateX(0%); /* Show sidebar */
+        }
+        .hamb {
+            display: block; /* Show hamburger menu button on small screens */
+        }
+        header {
+            padding-inline-start: 18px; /* Adjust padding due to sidebar being hidden */
+        }
+    }
+
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);backdrop-filter:blur(6px)}
+.btn{appearance:none;border:none;padding:10px 14px;border-radius:12px;background:var(--brand);color:#062b1e;font-weight:700;cursor:pointer}
+.btn.secondary{background:var(--brand-2);color:#00252a}
+.btn.ghost{background:transparent;border:1px solid rgba(255,255,255,.15);color:var(--text)}
+.btn.danger{background:var(--danger);color:#300}
+.btn.warn{background:var(--warn);color:#321}
+
+main{padding:22px}
+.grid{display:grid;gap:16px}
+.grid.cards{grid-template-columns:repeat(4,1fr)}
+.card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);padding:16px}
+.card h3{margin:0 0 8px}
+.kpi{font-size:28px;font-weight:800}
+.muted{color:var(--text-dim)}
+.progress{height:9px;background:#0b1225;border-radius:999px;overflow:hidden}
+.progress>span{display:block;height:100%;background:linear-gradient(90deg,var(--brand),#64e2a1);width:0}
+table{width:100%;border-collapse:collapse;overflow:hidden;border-radius:12px}
+th,td{padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.08);text-align:right}
+thead th{background:rgba(255,255,255,.04);font-weight:700}
+
+.badge{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.badge.high{background:rgba(239,68,68,.2);color:#fecaca}
+.badge.med{background:rgba(245,158,11,.2);color:#fde68a}
+.badge.low{background:rgba(34,197,94,.2);color:#bbf7d0}
+
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row.spread{justify-content:space-between}
+.field{display:grid;gap:6px;margin:10px 0}
+.field input,.field select,.field textarea{background:#0b1225;color:var(--text);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px}
+form .row>*.grow{flex:1}
+.section{display:none}
+.section.active{display:block;animation:fade .25s}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.toast{position:fixed;inset-inline:0;top:14px;display:grid;place-items:center;z-index:50}
+.toast .inner{background:#052214;border:1px solid rgba(34,197,94,.35);color:#a7f3d0;padding:10px 14px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.toast.danger .inner{background:#2a0909;border-color:#ef4444;color:#fecaca}
+
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;place-items:center;z-index:40}
+.modal.active{display:grid}
+.modal .box{background:#0b1225;border:1px solid rgba(255,255,255,.12);border-radius:14px;max-width:620px;width:92%;padding:18px}
+
+.loading{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.45);z-index:60;color:white;font-size:24px;flex-direction:column;gap:15px}
+.loading span {animation: fadeInOut 1.5s infinite alternate;}
+@keyframes fadeInOut { 0% {opacity: 0.3;} 100% {opacity: 1;} }
+
+.role-change-modal-box .field {
+  margin-bottom: 20px;
+}
+.role-change-modal-box select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--muted);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+}
+.role-change-modal-box .btn {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  font-size: 16px;
+}
+
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside id="sidebar" class="sidebar">
+      <div class="brand">
+        <div class="logo">FT</div>
+        <div>
+          <div style="font-weight:800">Finishing Tasks</div>
+          <div class="muted" style="font-size:12px">نظام إدارة المشاريع</div>
+          <div class="muted" style="font-size:10px;" id="userIdDisplay"></div>
+          <div class="muted" style="font-size:10px;" id="userRoleDisplay"></div>
+        </div>
+      </div>
+      <nav id="nav">
+        <a href="#" data-page="dashboard" class="active">لوحة المعلومات</a>
+        <a href="#" data-page="projects">المشاريع</a>
+        <a href="#" data-page="library">المكتبة</a>
+        <a href="#" data-page="reports">التقارير</a>
+        <a href="#" data-page="profile">الملف الشخصي</a>
+      </nav>
+      <div style="margin-top:20px; padding:0 14px;">
+        <button class="btn ghost" style="width:100%" onclick="openRoleChangeModal()">تغيير الدور</button>
+      </div>
+    </aside>
+    
+    <!-- Main Content Area -->
+    <div id="appContent" style="display: block;">
+      <header>
+        <!-- Hamburger menu button for mobile -->
+        <button class="btn ghost hamb" onclick="toggleSidebar()">☰</button>
+        <div class="row" style="gap:8px"><strong>لوحة التحكم</strong></div>
+        <div class="row" style="gap:8px">
+          <button class="btn ghost" onclick="refreshDashboard()">تحديث</button>
+          <button class="btn" id="quickAddProject">مشروع جديد</button>
+        </div>
+      </header>
+
+      <main id="mainContent">
+        <!-- Dashboard -->
+        <section id="dashboard" class="section active">
+          <div class="grid cards">
+            <div class="card"><div class="muted">إجمالي المشاريع</div><div class="kpi" id="kpiProjects">0</div></div>
+            <div class="card"><div class="muted">المهام المكتملة</div><div class="kpi" id="kpiDone">0</div></div>
+            <div class="card"><div class="muted">المهام الجارية</div><div class="kpi" id="kpiDoing">0</div></div>
+            <div class="card"><div class="muted">المهام المتأخرة</div><div class="kpi" id="kpiLate">0</div></div>
+          </div>
+
+          <div class="grid" style="margin-top:18px;grid-template-columns:1.4fr .6fr;gap:18px">
+            <div class="card">
+              <div class="row spread"><h3>المشاريع النشطة</h3><button class="btn ghost" onclick="showPage('projects')">عرض جميع المشاريع</button></div>
+              <div id="activeProjects"></div>
+            </div>
+            <div class="card">
+              <h3>المهام الأخيرة</h3>
+              <table>
+                <thead><tr><th>اسم المهمة</th><th>المشروع</th><th>المسؤول</th><th>الحالة</th><th>التسليم</th></tr></thead>
+                <tbody id="recentTasks"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Projects list -->
+        <section id="projects" class="section">
+          <div class="row spread" style="margin-bottom:12px">
+            <h3>إدارة المشاريع</h3>
+            <div class="row"><button class="btn ghost" onclick="filterProjects()">فلترة</button><button class="btn" id="addProjectBtn">إضافة مشروع</button></div>
+          </div>
+          <div id="projectsList" class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px"></div>
+        </section>
+
+        <!-- Project details -->
+        <section id="project-details" class="section">
+          <div class="row spread" style="margin-bottom:12px">
+            <button class="btn ghost" onclick="showPage('projects')">⬅ العودة للمشاريع</button>
+            <div class="row">
+              <button class="btn secondary" id="addTaskInDetails">إضافة مهمة</button>
+              <button class="btn warn" id="editProjectInDetails">تعديل</button>
+              <button class="btn danger" id="deleteProjectInDetails">حذف</button>
+            </div>
+          </div>
+          <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+            <div class="card">
+              <h3>معلومات المشروع</h3>
+              <div id="projectInfo"></div>
+            </div>
+            <div class="card">
+              <h3>إحصائيات</h3>
+              <div id="projectStats"></div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:14px">
+            <h3>مهام المشروع</h3>
+            <table>
+              <thead><tr><th>الاسم</th><th>المسؤول</th><th>الحالة</th><th>الأولوية</th><th>التسليم</th><th>إجراءات</th></tr></thead>
+              <tbody id="projectTasks"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Task Library -->
+        <section id="library" class="section">
+          <div class="row spread" style="margin-bottom:12px">
+            <h3>مكتبة المهام (استيراد من CSV)</h3>
+            <div class="row">
+              <input type="file" id="csvFile" accept=".csv" style="display:none"/>
+              <button class="btn secondary" id="importCsvBtn">استيراد CSV</button>
+              <button class="btn ghost" id="saveLibBtn">حفظ المكتبة</button>
+              <button class="btn ghost" id="exportLibBtn">تصدير JSON</button>
+              <button class="btn danger" id="clearLibBtn">تفريغ</button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px">
+            <div class="row" style="gap:12px">
+              <div class="field"><label>اختر مشروع</label>
+                <select id="libraryProjectSelect"></select>
+              </div>
+              <button class="btn" id="applyAllBtn">إضافة كل مهام المكتبة للمشروع</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>القائمة</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:56px">#</th>
+                  <th>المهمة</th>
+                  <th>الأدوار</th>
+                  <th style="width:180px">إجراء</th>
+                </tr>
+              </thead>
+              <tbody id="libraryTable"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Reports (simple) -->
+        <section id="reports" class="section">
+          <div class="row spread" style="margin-bottom:12px"><h3>التقارير</h3>
+            <div class="row"><div class="field"><label>من تاريخ</label><input type="date" id="dateFrom"></div><div class="field"><label>إلى تاريخ</label><input type="date" id="dateTo"></div>
+              <button class="btn ghost" onclick="filterReports()">تطبيق الفلتر</button>
+              <button class="btn secondary" onclick="exportReport()">تصدير</button>
+              <button class="btn" onclick="generateReport()">تقرير جديد</button></div>
+          </div>
+          <div class="grid cards" id="reportsGrid"></div>
+        </section>
+
+        <!-- Profile (placeholder) -->
+        <section id="profile" class="section">
+          <div class="row spread" style="margin-bottom:12px"><h3>الملف الشخصي</h3><button class="btn ghost">حفظ</button></div>
+          <div class="card">قريباً…</div>
+        </section>
+
+        <!-- Project form -->
+        <section id="project-form" class="section">
+          <div class="row spread" style="margin-bottom:12px"><h3 id="projectFormTitle">مشروع جديد</h3>
+            <div class="row"><button class="btn ghost" onclick="cancelProjectForm()">إلغاء</button><button class="btn" onclick="saveProjectForm()">حفظ المشروع</button></div>
+          </div>
+          <div class="card">
+            <form id="projectForm">
+              <div class="row">
+                <div class="field grow"><label>اسم المشروع</label><input id="projectName" required/></div>
+                <div class="field grow"><label>مدير المشروع</label><input id="projectManager" placeholder="مثال: أحمد"/></div>
+                <div class="field"><label>الأولوية</label>
+                  <select id="projectPriority">
+                    <option value="high">عالية</option>
+                    <option value="med">متوسطة</option>
+                    <option value="low" selected>منخفضة</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row">
+                <div class="field"><label>تاريخ البداية</label><input type="date" id="startDate"></div>
+                <div class="field"><label>تاريخ التسليم</label><input type="date" id="endDate"></div>
+                <div class="field grow"><label>الميزانية (اختياري)</label><input id="projectBudget" type="number" min="0" step="1000"/></div>
+              </div>
+              <div class="field"><label>وصف المشروع</label><textarea id="projectDescription" rows="4" placeholder="تفاصيل مختصرة…"></textarea></div>
+            </form>
+          </div>
+        </section>
+
+        <!-- Task form -->
+        <section id="task-form" class="section">
+          <div class="row spread" style="margin-bottom:12px"><h3 id="taskFormTitle">مهمة جديدة</h3>
+            <div class="row"><button class="btn ghost" onclick="cancelTaskForm()">إلغاء</button><button class="btn" onclick="saveTaskForm()">حفظ المهمة</button></div>
+          </div>
+          <div class="card">
+            <form id="taskForm">
+              <div class="row">
+                <div class="field grow"><label>اسم المهمة</label><input id="taskName" required/></div>
+                <div class="field grow"><label>المسؤول</label><input id="taskAssignee" placeholder="مثال: فاطمة"/></div>
+                <div class="field"><label>الحالة</label>
+                  <select id="taskStatus">
+                    <option>جاري</option>
+                    <option>مكتمل</option>
+                    <option>معلق</option>
+                  </select>
+                </div>
+                <div class="field"><label>الأولوية</label>
+                  <select id="taskPriority">
+                    <option value="high">عالية</option>
+                    <option value="med" selected>متوسطة</option>
+                    <option value="low">منخفضة</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row">
+                <div class="field"><label>تاريخ التسليم</label><input type="date" id="taskDeadline"></div>
+                <div class="field grow"><label>الساعات المقدرة (اختياري)</label><input id="estimatedHours" type="number" min="1" step="1"/></div>
+              </div>
+              <div class="field"><label>وصف المهمة</label><textarea id="taskDescription" rows="3"></textarea></div>
+            </form>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Role Change Modal -->
+    <div id="roleChangeModal" class="modal" role="dialog" aria-modal="true">
+        <div class="box role-change-modal-box">
+            <h3 style="margin-top:0">تغيير دورك</h3>
+            <div class="field">
+                <label for="modal-role-select" style="display:block; text-align:right; margin-bottom:5px; color:var(--text-dim);">اختر دورك الجديد:</label>
+                <select id="modal-role-select">
+                    <option value="consultant">استشاري</option>
+                    <option value="engineer">مهندس</option>
+                    <option value="supervisor">مشرف</option>
+                    <option value="buyer">مشتريات</option>
+                    <option value="technical_office">مكتب فني</option>
+                </select>
+            </div>
+            <div class="row" style="justify-content:flex-end;margin-top:12px">
+                <button class="btn ghost" onclick="closeRoleChangeModal()">إلغاء</button>
+                <button class="btn" onclick="saveNewRole()">حفظ الدور الجديد</button>
+            </div>
+        </div>
+    </div>
+
+  </div>
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="modal" role="dialog" aria-modal="true">
+    <div class="box">
+      <h3 id="modalTitle" style="margin-top:0">تأكيد</h3>
+      <p id="modalMessage">هل أنت متأكد؟</p>
+      <div class="row" style="justify-content:flex-end;margin-top:12px">
+        <button class="btn ghost" onclick="closeModal()">إلغاء</button>
+        <button class="btn danger" onclick="confirmAction()">تأكيد</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading" style="display:none;">
+    <span>جاري التحميل...</span>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // ======= Firebase Configuration and Initialization =======
+    // Global variables provided by Canvas environment for Firebase
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const firebaseConfig = {
+    apiKey: "AIzaSyCxhtlEJ7qmaEqi0dVFWXKeoeNfZRjUM44",
+    authDomain: "kids-skills-7119e.firebaseapp.com",
+    projectId: "kids-skills-7119e",
+    storageBucket: "kids-skills-7119e.firebasestorage.app",
+    messagingSenderId: "172730790601",
+    appId: "1:172730790601:web:05f81f01618809820d5318",
+    measurementId: "G-CN44PC04QP"
+  };
+
+ // الكود الصحيح الذي يجب استخدامه
+// Initialize Firebase app
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Listen for authentication state changes (this is where user ID and role are determined)
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            // User is signed in (either from initialAuthToken or anonymously)
+            currentUserId = user.uid;
+            document.getElementById('userIdDisplay').innerText = `المستخدم: ${currentUserId}`;
+
+            // Fetch or create user role profile in Firestore
+            const userProfileDocRef = doc(db, `artifacts/${appId}/users/${currentUserId}/user_profile`, 'profile');
+            try {
+                const userProfileSnap = await getDoc(userProfileDocRef);
+                if (userProfileSnap.exists() && userProfileSnap.data().role) {
+                    currentUserRole = userProfileSnap.data().role;
+                } else {
+                    // If profile doesn't exist or no role, assign a default role and create/update profile
+                    currentUserRole = 'consultant'; // Default role if not found
+                    await setDoc(userProfileDocRef, {
+                        role: currentUserRole,
+                        createdAt: new Date(),
+                        email: user.email || `anonymous-${currentUserId}@example.com` // Placeholder email for anonymous
+                    }, { merge: true }); // Use merge to avoid overwriting existing data if doc exists
+                    toast('تم تعيين دور افتراضي لك (استشاري).');
+                }
+                document.getElementById('userRoleDisplay').innerText = `الدور: ${mapRoleToArabic(currentUserRole)}`;
+                console.log("User signed in:", currentUserId, "Role:", currentUserRole);
+
+                // Ensure main app content is visible and UI is updated
+                document.getElementById('appContent').style.display = 'block';
+                updateUIForRole(); // Update UI based on fetched role
+                loadData(); // Load project/task data for this user
+            } catch (error) {
+                console.error("Error fetching/creating user profile:", error);
+                toast('خطأ في تحميل ملف المستخدم.','danger');
+                currentUserRole = 'supervisor'; // Fallback role in case of error
+                document.getElementById('userRoleDisplay').innerText = `الدور: ${mapRoleToArabic(currentUserRole)} (خطأ)`;
+                // If error, assume default role and try to load app
+                document.getElementById('appContent').style.display = 'block';
+                updateUIForRole();
+                loadData();
+            }
+
+        } else {
+            // No user is signed in, attempt anonymous sign-in or use initial token
+            currentUserId = null;
+            currentUserRole = null;
+            document.getElementById('userIdDisplay').innerText = `المستخدم: (جاري التحديد)`;
+            document.getElementById('userRoleDisplay').innerText = `الدور: (جاري التحديد)`;
+            document.getElementById('appContent').style.display = 'block'; // Ensure main app is visible for loading animation
+
+            if (initialAuthToken) {
+                signInWithCustomToken(auth, initialAuthToken)
+                    .catch((error) => {
+                        console.error("Custom token sign-in failed, trying anonymous:", error);
+                        signInAnonymously(auth).catch((err) => {
+                            console.error("Anonymous sign-in failed:", err);
+                            toast('خطأ في المصادقة: لا يمكن تحديد المستخدم','danger');
+                        });
+                    });
+            } else {
+                signInAnonymously(auth).catch((error) => {
+                    console.error("Anonymous sign-in failed:", error);
+                    toast('خطأ في المصادقة: لا يمكن تحديد المستخدم','danger');
+                });
+            }
+        }
+    });
+
+    // Global data stores
+    let allProjects = [];
+    let allTasks = [];
+
+    // Loading overlay functions
+    function showLoading() {
+      document.getElementById('loadingOverlay').style.display = 'grid';
+    }
+    function hideLoading() {
+      document.getElementById('loadingOverlay').style.display = 'none';
+    }
+
+    // Toast and Modal functions (kept from original code, slightly adapted)
+    let toastTimeout;
+    function toast(message, type = 'success') {
+      clearTimeout(toastTimeout);
+      const toastDiv = document.querySelector('.toast');
+      if (!toastDiv) {
+        const newToast = document.createElement('div');
+        newToast.className = 'toast';
+        newToast.innerHTML = '<div class="inner"></div>';
+        document.body.appendChild(newToast);
+      }
+      const inner = document.querySelector('.toast .inner');
+      inner.className = `inner ${type}`;
+      inner.textContent = message;
+      document.querySelector('.toast').style.display = 'grid';
+      toastTimeout = setTimeout(() => {
+        document.querySelector('.toast').style.display = 'none';
+      }, 3000);
+    }
+
+    let confirmModalAction = null;
+    let confirmModalData = null;
+
+    function showModal(title, message, actionCallback, data = null) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalMessage').textContent = message;
+      confirmModalAction = actionCallback;
+      confirmModalData = data;
+      document.getElementById('confirmModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('confirmModal').classList.remove('active');
+      confirmModalAction = null;
+      confirmModalData = null;
+    }
+
+    function confirmAction() {
+      if (confirmModalAction) {
+        confirmModalAction(confirmModalData);
+      }
+      closeModal();
+    }
+
+    // Utility functions
+    function escapeHTML(str) {
+      return str.replace(/[&<>"']/g, function (match) {
+        return ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        }[match]);
+      });
+    }
+
+    function getPriorityBadge(priority) {
+      switch (priority) {
+        case 'high': return `<span class="badge high">عالية</span>`;
+        case 'med': return `<span class="badge med">متوسطة</span>`;
+        case 'low': return `<span class="badge low">منخفضة</span>`;
+        default: return '';
+      }
+    }
+
+    function getStatusBadge(status) {
+        switch (status) {
+            case 'مكتمل': return `<span class="badge low">${status}</span>`; // Using 'low' for green color
+            case 'جاري': return `<span class="badge med">${status}</span>`; // Using 'med' for orange color
+            case 'معلق': return `<span class="badge high">${status}</span>`; // Using 'high' for red color
+            default: return '';
+        }
+    }
+
+    function getFormattedDate(dateString) {
+      if (!dateString) return '—';
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
+      } catch (e) {
+        return 'تاريخ غير صالح';
+      }
+    }
+
+    function mapRoleToArabic(role) {
+        switch(role) {
+            case 'consultant': return 'استشاري';
+            case 'engineer': return 'مهندس';
+            case 'supervisor': return 'مشرف';
+            case 'buyer': return 'مشتريات';
+            case 'technical_office': return 'مكتب فني';
+            default: return 'غير معروف';
+        }
+    }
+
+    // ======= Sidebar and Navigation =======
+    let sidebarOpen = false;
+    function toggleSidebar() {
+      sidebarOpen = !sidebarOpen;
+      document.getElementById('sidebar').classList.toggle('active', sidebarOpen);
+    }
+
+    function showPage(pageId) {
+      document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+      });
+      document.getElementById(pageId).classList.add('active');
+
+      document.querySelectorAll('#nav a').forEach(link => {
+        link.classList.remove('active');
+        if (link.dataset.page === pageId) {
+          link.classList.add('active');
+        }
+      });
+      // Close sidebar on mobile after navigation
+      if (window.innerWidth <= 768 && sidebarOpen) {
+          toggleSidebar();
+      }
+
+      // Special handling for pages that need data refresh
+      if (pageId === 'dashboard') renderDashboard();
+      if (pageId === 'projects') renderProjectsList();
+      if (pageId === 'library') renderLibrary();
+    }
+
+    // ======= Role Change Modal Functions =======
+    function openRoleChangeModal() {
+        document.getElementById('modal-role-select').value = currentUserRole; // Pre-select current role
+        document.getElementById('roleChangeModal').classList.add('active');
+    }
+
+    function closeRoleChangeModal() {
+        document.getElementById('roleChangeModal').classList.remove('active');
+    }
+
+    async function saveNewRole() {
+        const newRole = document.getElementById('modal-role-select').value;
+        if (!newRole) {
+            toast('الرجاء اختيار دور صحيح.','danger');
+            return;
+        }
+
+        if (!currentUserId) {
+            toast('خطأ: لا يمكن تحديد المستخدم لتغيير الدور.','danger');
+            return;
+        }
+
+        showLoading();
+        try {
+            const userProfileDocRef = doc(db, `artifacts/${appId}/users/${currentUserId}/user_profile`, 'profile');
+            await setDoc(userProfileDocRef, { role: newRole }, { merge: true }); // Update only the role field
+            currentUserRole = newRole;
+            document.getElementById('userRoleDisplay').innerText = `الدور: ${mapRoleToArabic(currentUserRole)}`;
+            toast(`تم تغيير دورك إلى: ${mapRoleToArabic(currentUserRole)}`);
+            updateUIForRole(); // Re-apply UI permissions
+            closeRoleChangeModal();
+        } catch (error) {
+            console.error("Error saving new role:", error);
+            toast('حدث خطأ أثناء حفظ الدور الجديد.','danger');
+        } finally {
+            hideLoading();
+        }
+    }
+
+
+    // ======= Data Loading and Real-time Listeners (Firestore) =======
+    async function loadData() {
+      if (!currentUserId) {
+          console.log("No user ID available, cannot load data.");
+          return; // Do not proceed if no user is authenticated
+      }
+      showLoading();
+      try {
+        // Real-time listener for Projects
+        const projectsColRef = collection(db, `artifacts/${appId}/users/${currentUserId}/projects`);
+        onSnapshot(projectsColRef, (snapshot) => {
+          allProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          // Re-render relevant parts after project data is updated
+          renderDashboard();
+          renderProjectsList();
+          if (currentPage === 'project-details' && currentProjectId) {
+              openProject(currentProjectId);
+          }
+          renderLibrary(); // Ensure project select in library is updated
+          hideLoading(); // Hide loading only when data is initially loaded
+          console.log("Projects updated:", allProjects);
+        }, (error) => {
+          console.error("Error fetching projects:", error);
+          toast('خطأ في تحميل المشاريع','danger');
+          hideLoading();
+        });
+
+        // Real-time listener for Tasks
+        const tasksColRef = collection(db, `artifacts/${appId}/users/${currentUserId}/tasks`);
+        onSnapshot(tasksColRef, (snapshot) => {
+          allTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          // Re-render relevant parts after task data is updated
+          renderDashboard();
+          renderProjectsList();
+          if (currentPage === 'project-details' && currentProjectId) {
+              openProject(currentProjectId);
+          }
+          hideLoading();
+          console.log("Tasks updated:", allTasks);
+        }, (error) => {
+          console.error("Error fetching tasks:", error);
+          toast('خطأ في تحميل المهام','danger');
+          hideLoading();
+        });
+
+      } catch (e) {
+        console.error("Error setting up Firestore listeners:", e);
+        toast('خطأ في تحميل البيانات الأولية','danger');
+        hideLoading();
+      }
+    }
+
+    // ======= Project and Task Data Operations (Firestore) =======
+
+    // Project related functions
+    let currentProjectId = null;
+    let currentPage = 'dashboard';
+
+    function getProjectById(id) {
+        return allProjects.find(p => p.id === id);
+    }
+
+    function getTasksByProjectId(projectId) {
+        return allTasks.filter(t => t.projectId === projectId);
+    }
+
+    async function saveProject(projectData, isNew) {
+        // Permission check: Only Consultant can add/edit projects
+        if (currentUserRole !== 'consultant') {
+            toast('ليس لديك صلاحية لإضافة/تعديل المشاريع.','danger');
+            return;
+        }
+
+        showLoading();
+        try {
+            if (isNew) {
+                await addDoc(collection(db, `artifacts/${appId}/users/${currentUserId}/projects`), projectData);
+                toast('تم إضافة المشروع بنجاح');
+            } else {
+                await setDoc(doc(db, `artifacts/${appId}/users/${currentUserId}/projects`, projectData.id), projectData);
+                toast('تم تحديث المشروع بنجاح');
+            }
+            hideLoading();
+            showPage('projects');
+        } catch (e) {
+            console.error("Error saving project:", e);
+            toast('حدث خطأ أثناء حفظ المشروع','danger');
+            hideLoading();
+        }
+    }
+
+    async function deleteProject(projectId) {
+        // Permission check: Only Consultant can delete projects
+        if (currentUserRole !== 'consultant') {
+            toast('ليس لديك صلاحية لحذف المشاريع.','danger');
+            return;
+        }
+
+        showLoading();
+        try {
+            // Delete associated tasks first
+            const tasksToDelete = allTasks.filter(t => t.projectId === projectId);
+            for (const task of tasksToDelete) {
+                await deleteDoc(doc(db, `artifacts/${appId}/users/${currentUserId}/tasks`, task.id));
+            }
+            // Then delete the project
+            await deleteDoc(doc(db, `artifacts/${appId}/users/${currentUserId}/projects`, projectId));
+            toast('تم حذف المشروع ومهامه بنجاح');
+            hideLoading();
+            showPage('projects');
+        }
+        catch (e) {
+            console.error("Error deleting project:", e);
+            toast('حدث خطأ أثناء حذف المشروع','danger');
+            hideLoading();
+        }
+    }
+
+    // Task related functions
+    async function saveTask(taskData, isNew) {
+        // Permission check: Consultant can add/edit any task.
+        // Other roles can only add/edit their own tasks
+        // For simplicity, using currentUserId as assignee. In a real app, 'assignee' would map to a user's UID or email.
+        const isAssignedToCurrentUser = (taskData.assignee === currentUserId); // Assuming assignee field in task is the UID now
+
+        if (currentUserRole !== 'consultant' && !isAssignedToCurrentUser) {
+            toast('ليس لديك صلاحية لإضافة/تعديل هذه المهمة (غير معينة لك).','danger');
+            return;
+        }
+
+        showLoading();
+        try {
+            if (isNew) {
+                await addDoc(collection(db, `artifacts/${appId}/users/${currentUserId}/tasks`), taskData);
+                toast('تم إضافة المهمة بنجاح');
+            } else {
+                await setDoc(doc(db, `artifacts/${appId}/users/${currentUserId}/tasks`, taskData.id), taskData);
+                toast('تم تحديث المهمة بنجاح');
+            }
+            hideLoading();
+            if (currentProjectId) {
+                openProject(currentProjectId); // Stay on project details
+            } else {
+                showPage('dashboard'); // Go back to dashboard if no project context
+            }
+        } catch (e) {
+            console.error("Error saving task:", e);
+            toast('حدث خطأ أثناء حفظ المهمة','danger');
+            hideLoading();
+        }
+    }
+
+    async function deleteTask(taskId, projectId) {
+        // Permission check: Only Consultant can delete tasks
+        if (currentUserRole !== 'consultant') {
+            toast('ليس لديك صلاحية لحذف المهام.','danger');
+            return;
+        }
+        showLoading();
+        try {
+            await deleteDoc(doc(db, `artifacts/${appId}/users/${currentUserId}/tasks`, taskId));
+            toast('تم حذف المهمة بنجاح');
+            hideLoading();
+            if (projectId) {
+                openProject(projectId); // Re-render project details if task was deleted from there
+            } else {
+                renderDashboard();
+            }
+        } catch (e) {
+            console.error("Error deleting task:", e);
+            toast('حدث خطأ أثناء حذف المهمة','danger');
+            hideLoading();
+        }
+    }
+
+    // ======= Rendering Functions =======
+
+    function renderDashboard() {
+      const totalProjects = allProjects.length;
+      const totalTasks = allTasks.length;
+      const completedTasks = allTasks.filter(t => t.status === 'مكتمل').length;
+      const doingTasks = allTasks.filter(t => t.status === 'جاري').length;
+      const lateTasks = allTasks.filter(t => new Date(t.deadline) < new Date() && t.status !== 'مكتمل').length;
+
+      document.getElementById('kpiProjects').textContent = totalProjects;
+      document.getElementById('kpiDone').textContent = completedTasks;
+      document.getElementById('kpiDoing').textContent = doingTasks;
+      document.getElementById('kpiLate').textContent = lateTasks;
+
+      // Active Projects (top 5)
+      const activeProjectsDiv = document.getElementById('activeProjects');
+      activeProjectsDiv.innerHTML = '';
+      if (allProjects.length === 0) {
+        activeProjectsDiv.innerHTML = `<div class="muted" style="text-align:center;padding:20px;">لا توجد مشاريع حتى الآن. ابدأ بإضافة مشروع جديد!</div>`;
+      } else {
+        const sortedProjects = [...allProjects].sort((a,b) => b.progress - a.progress); // Example sort
+        sortedProjects.slice(0, 5).forEach(p => {
+            // Recalculate tasks and progress on the fly for display consistency
+            const projectTasks = allTasks.filter(t => t.projectId === p.id);
+            const projectTotalTasks = projectTasks.length;
+            const projectCompletedTasks = projectTasks.filter(t => t.status === 'مكتمل').length;
+            const projectProgress = projectTotalTasks > 0 ? Math.round((projectCompletedTasks / projectTotalTasks) * 100) : 0;
+
+            activeProjectsDiv.insertAdjacentHTML('beforeend', `
+            <div class="row spread" style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);margin-bottom:8px;cursor:pointer;" onclick="openProject('${p.id}')">
+                <div>
+                    <strong>${escapeHTML(p.name||'—')}</strong><br>
+                    <span class="muted">${escapeHTML(p.manager||'—')}</span>
+                </div>
+                <div style="text-align:left">
+                    <div class="progress" style="width:100px;">
+                        <span style="width:${projectProgress}%;"></span>
+                    </div>
+                    <span class="muted" style="font-size:12px">${projectProgress}% اكتمل</span>
+                </div>
+            </div>`);
+        });
+      }
+
+
+      // Recent Tasks (latest 5)
+      const recentTasksTbody = document.getElementById('recentTasks');
+      recentTasksTbody.innerHTML = '';
+      if (allTasks.length === 0) {
+        recentTasksTbody.innerHTML = `<tr><td colspan="5" class="muted">لا توجد مهام حتى الآن.</td></tr>`;
+      } else {
+        const sortedTasks = [...allTasks].sort((a, b) => new Date(b.deadline) - new Date(a.deadline)); // Sort by deadline desc
+        sortedTasks.slice(0, 5).forEach(task => {
+          const project = allProjects.find(p => p.id === task.projectId);
+          recentTasksTbody.insertAdjacentHTML('beforeend', `
+            <tr>
+              <td>${escapeHTML(task.name||'—')}</td>
+              <td>${escapeHTML(project ? project.name : 'غير محدد')}</td>
+              <td>${escapeHTML(task.assignee||'—')}</td>
+              <td>${getStatusBadge(task.status)}</td>
+              <td>${getFormattedDate(task.deadline)}</td>
+            </tr>
+          `);
+        });
+      }
+    }
+
+    function renderProjectsList() {
+      const projectsListDiv = document.getElementById('projectsList');
+      projectsListDiv.innerHTML = '';
+      if (allProjects.length === 0) {
+        projectsListDiv.innerHTML = `<div class="muted" style="text-align:center;grid-column:1/-1;padding:40px;">لا توجد مشاريع لعرضها. اضغط "إضافة مشروع" لتبدأ!</div>`;
+        return;
+      }
+      allProjects.forEach(p => {
+        // Recalculate tasks and progress for project list display
+        const projectTasks = allTasks.filter(t => t.projectId === p.id);
+        const projectTotalTasks = projectTasks.length;
+        const projectCompletedTasks = projectTasks.filter(t => t.status === 'مكتمل').length;
+        const projectProgress = projectTotalTasks > 0 ? Math.round((projectCompletedTasks / projectTotalTasks) * 100) : 0;
+
+        projectsListDiv.insertAdjacentHTML('beforeend', `
+          <div class="card">
+            <div class="row spread">
+              <h3>${escapeHTML(p.name||'—')}</h3>
+              ${getPriorityBadge(p.priority)}
+            </div>
+            <div class="muted" style="margin-bottom:8px">مدير المشروع: ${escapeHTML(p.manager||'—')}</div>
+            <div class="muted" style="font-size:13px;margin-bottom:12px;">تاريخ التسليم: ${getFormattedDate(p.deadline)}</div>
+            <div class="progress" style="margin-bottom:6px"><span style="width:${projectProgress}%"></span></div>
+            <div class="muted" style="font-size:12px;text-align:left">${projectCompletedTasks} / ${projectTotalTasks} مهام مكتملة (${projectProgress}%)</div>
+            <div class="row" style="justify-content:flex-end;margin-top:10px">
+              <button class="btn ghost" onclick="openProject('${p.id}')">تفاصيل</button>
+              <button class="btn warn" onclick="editProject('${p.id}')" ${currentUserRole === 'consultant' ? '' : 'disabled'}>تعديل</button>
+              <button class="btn danger" onclick="confirmDeleteProject('${p.id}', '${escapeHTML(p.name)}')">حذف</button>
+            </div>
+          </div>
+        `);
+      });
+
+      // Update visibility of project specific buttons
+      document.getElementById('addProjectBtn').style.display = (currentUserRole === 'consultant') ? 'inline-flex' : 'none';
+      document.getElementById('quickAddProject').style.display = (currentUserRole === 'consultant') ? 'inline-flex' : 'none';
+
+    }
+
+    function openProject(id) {
+      currentProjectId = id;
+      currentPage = 'project-details';
+      const project = getProjectById(id);
+      if (!project) {
+        toast('المشروع غير موجود','danger');
+        showPage('projects');
+        return;
+      }
+
+      // Recalculate stats for project details
+      const projectTasks = allTasks.filter(t => t.projectId === project.id);
+      const projectTotalTasks = projectTasks.length;
+      const projectCompletedTasks = projectTasks.filter(t => t.status === 'مكتمل').length;
+      const projectProgress = projectTotalTasks > 0 ? Math.round((projectCompletedTasks / projectTotalTasks) * 100) : 0;
+      const projectDoingTasks = projectTasks.filter(t => t.status === 'جاري').length;
+      const projectLateTasks = projectTasks.filter(t => new Date(t.deadline) < new Date() && t.status !== 'مكتمل').length;
+
+      document.getElementById('projectInfo').innerHTML = `
+        <p><strong>الاسم:</strong> ${escapeHTML(project.name||'—')}</p>
+        <p><strong>المدير:</strong> ${escapeHTML(project.manager||'—')}</p>
+        <p><strong>الأولوية:</strong> ${getPriorityBadge(project.priority)}</p>
+        <p><strong>تاريخ البداية:</strong> ${getFormattedDate(project.startDate)}</p>
+        <p><strong>تاريخ التسليم:</strong> ${getFormattedDate(project.deadline)}</p>
+        <p><strong>الميزانية:</strong> ${project.budget ? project.budget.toLocaleString() + ' EGP' : '—'}</p>
+        <p><strong>الوصف:</strong> ${escapeHTML(project.description||'—')}</p>
+      `;
+
+      document.getElementById('projectStats').innerHTML = `
+        <p><strong>إجمالي المهام:</strong> ${projectTotalTasks}</p>
+        <p><strong>مهام مكتملة:</strong> ${projectCompletedTasks}</p>
+        <p><strong>مهام جارية:</strong> ${projectDoingTasks}</p>
+        <p><strong>مهام متأخرة:</strong> ${projectLateTasks}</p>
+        <p><strong>التقدم:</strong> ${projectProgress}%</p>
+        <div class="progress"><span style="width:${projectProgress}%"></span></div>
+      `;
+
+      const projectTasksTbody = document.getElementById('projectTasks');
+      projectTasksTbody.innerHTML = '';
+      if (projectTasks.length === 0) {
+        projectTasksTbody.innerHTML = `<tr><td colspan="6" class="muted">لا توجد مهام لهذا المشروع.</td></tr>`;
+      } else {
+        projectTasks.forEach(task => {
+          // Determine if the current user is assigned to this task
+          // We assume assignee field in task is the UID now for simplicity
+          const isAssignedToCurrentUser = (task.assignee === currentUserId);
+
+          projectTasksTbody.insertAdjacentHTML('beforeend', `
+            <tr>
+              <td>${escapeHTML(task.name||'—')}</td>
+              <td>${escapeHTML(task.assignee||'—')}</td>
+              <td>${getStatusBadge(task.status)}</td>
+              <td>${getPriorityBadge(task.priority)}</td>
+              <td>${getFormattedDate(task.deadline)}</td>
+              <td class="row" style="gap:6px">
+                <button class="btn warn" onclick="editTask('${task.id}')"
+                  ${(currentUserRole === 'consultant' || isAssignedToCurrentUser) ? '' : 'disabled'}>تعديل</button>
+                <button class="btn danger" onclick="confirmDeleteTask('${task.id}', '${project.id}', '${escapeHTML(task.name)}')">حذف</button>
+              </td>
+            </tr>
+          `);
+        });
+      }
+      showPage('project-details');
+
+      // Update visibility of project detail action buttons
+      document.getElementById('addTaskInDetails').style.display = (currentUserRole === 'consultant') ? 'inline-flex' : 'none';
+      document.getElementById('editProjectInDetails').style.display = (currentUserRole === 'consultant') ? 'inline-flex' : 'none';
+      document.getElementById('deleteProjectInDetails').style.display = (currentUserRole === 'consultant') ? 'inline-flex' : 'none';
+    }
+
+    // ======= Project Form Handling =======
+    let editingProject = null;
+
+    document.getElementById('addProjectBtn').onclick = () => showProjectForm();
+    document.getElementById('quickAddProject').onclick = () => showProjectForm();
+    // No need for editProjectInDetails.onclick here, it's handled by openProject and role checks on the button itself.
+
+    function showProjectForm(projectId = null) {
+        // Permission check: Only Consultant can access project form
+        if (currentUserRole !== 'consultant') {
+            toast('ليس لديك صلاحية للوصول إلى نموذج المشاريع.','danger');
+            showPage('dashboard'); // Redirect to dashboard if not allowed
+            return;
+        }
+
+        currentPage = 'project-form';
+        editingProject = null;
+        const form = document.getElementById('projectForm');
+        form.reset(); // Clear form
+
+        document.getElementById('projectFormTitle').textContent = 'مشروع جديد';
+        if (projectId) {
+            editingProject = getProjectById(projectId);
+            if (editingProject) {
+                document.getElementById('projectFormTitle').textContent = 'تعديل مشروع';
+                document.getElementById('projectName').value = editingProject.name || '';
+                document.getElementById('projectManager').value = editingProject.manager || '';
+                document.getElementById('projectPriority').value = editingProject.priority || 'low';
+                document.getElementById('startDate').value = editingProject.startDate || '';
+                document.getElementById('endDate').value = editingProject.deadline || '';
+                document.getElementById('projectBudget').value = editingProject.budget || '';
+                document.getElementById('projectDescription').value = editingProject.description || '';
+            }
+        }
+        showPage('project-form');
+    }
+
+    function cancelProjectForm() {
+        showPage('projects');
+    }
+
+    async function saveProjectForm() {
+        // Permission check is inside saveProject function
+        const form = document.getElementById('projectForm');
+        if (!form.reportValidity()) return;
+
+        const projectData = {
+            name: document.getElementById('projectName').value,
+            manager: document.getElementById('projectManager').value,
+            priority: document.getElementById('projectPriority').value,
+            startDate: document.getElementById('startDate').value,
+            deadline: document.getElementById('endDate').value,
+            budget: Number(document.getElementById('projectBudget').value) || 0,
+            description: document.getElementById('projectDescription').value,
+            createdBy: currentUserId // Track who created the project
+        };
+
+        if (editingProject) {
+            projectData.id = editingProject.id;
+            await saveProject(projectData, false);
+        } else {
+            await saveProject(projectData, true);
+        }
+    }
+
+    function confirmDeleteProject(projectId, projectName) {
+      showModal('حذف مشروع', `هل أنت متأكد من حذف المشروع "${projectName}"؟ سيتم حذف جميع المهام المرتبطة به أيضاً.`, () => deleteProject(projectId));
+    }
+
+
+    // ======= Task Form Handling =======
+    let editingTask = null;
+
+    document.getElementById('addTaskInDetails').onclick = () => showTaskForm(null, currentProjectId);
+
+    function showTaskForm(taskId = null, projectId = null) {
+        // Permission check: Consultant can add/edit any task. Other roles can only add/edit their own tasks
+        // For simplicity, using currentUserId as assignee. In a real app, 'assignee' would map to a user's UID or email.
+        if (taskId) { // Editing existing task
+          const taskToEdit = allTasks.find(t => t.id === taskId);
+          // Assuming assignee field in task is the UID now
+          if (currentUserRole !== 'consultant' && taskToEdit && taskToEdit.assignee !== currentUserId) {
+            toast('ليس لديك صلاحية لتعديل هذه المهمة.','danger');
+            if (currentProjectId) openProject(currentProjectId); else showPage('dashboard');
+            return;
+          }
+        } else { // Adding new task
+          if (currentUserRole !== 'consultant') {
+            toast('ليس لديك صلاحية لإضافة مهام جديدة.','danger');
+            if (currentProjectId) openProject(currentProjectId); else showPage('dashboard');
+            return;
+          }
+        }
+
+        currentPage = 'task-form';
+        editingTask = null;
+        const form = document.getElementById('taskForm');
+        form.reset();
+
+        document.getElementById('taskFormTitle').textContent = 'مهمة جديدة';
+        if (taskId) {
+            editingTask = allTasks.find(t => t.id === taskId);
+            if (editingTask) {
+                document.getElementById('taskName').value = editingTask.name || '';
+                document.getElementById('taskAssignee').value = editingTask.assignee || ''; // Assignee value in form will be UID
+                document.getElementById('taskStatus').value = editingTask.status || 'جاري';
+                document.getElementById('taskPriority').value = editingTask.priority || 'med';
+                document.getElementById('taskDeadline').value = editingTask.deadline || '';
+                document.getElementById('estimatedHours').value = editingTask.estimatedHours || '';
+                document.getElementById('taskDescription').value = editingTask.description || '';
+                currentProjectId = editingTask.projectId; // Ensure project context is maintained
+            }
+        } else if (projectId) {
+            currentProjectId = projectId; // Set project context for new task
+            // For new tasks, set default assignee to current user's UID for roles other than consultant
+            if (currentUserRole !== 'consultant') {
+                document.getElementById('taskAssignee').value = currentUserId;
+                document.getElementById('taskAssignee').readOnly = true; // Make it read-only for non-consultants
+            } else {
+                document.getElementById('taskAssignee').readOnly = false; // Consultant can assign to others
+            }
+        }
+        showPage('task-form');
+    }
+
+    function cancelTaskForm() {
+        if (currentProjectId) {
+            openProject(currentProjectId);
+        } else {
+            showPage('dashboard');
+        }
+    }
+
+    async function saveTaskForm() {
+        // Permission check is inside saveTask function
+        const form = document.getElementById('taskForm');
+        if (!form.reportValidity()) return;
+
+        const taskData = {
+            name: document.getElementById('taskName').value,
+            assignee: document.getElementById('taskAssignee').value, // Assignee is now the UID
+            status: document.getElementById('taskStatus').value,
+            priority: document.getElementById('taskPriority').value,
+            deadline: document.getElementById('taskDeadline').value,
+            estimatedHours: Number(document.getElementById('estimatedHours').value) || 0,
+            description: document.getElementById('taskDescription').value,
+            projectId: currentProjectId // Link task to current project
+        };
+
+        if (editingTask) {
+            taskData.id = editingTask.id;
+            await saveTask(taskData, false);
+        } else {
+            await saveTask(taskData, true);
+        }
+    }
+
+    function editTask(taskId) {
+      showTaskForm(taskId);
+    }
+
+    function confirmDeleteTask(taskId, projectId, taskName) {
+      // Permission check is inside deleteTask function
+      showModal('حذف مهمة', `هل أنت متأكد من حذف المهمة "${taskName}"؟`, () => deleteTask(taskId, projectId));
+    }
+
+    // ======= Task Library (kept localStorage for templates as per plan) =======
+    const LIB_KEY = 'FT_task_library_v1';
+    let taskLibrary = [];
+
+    function saveLib(){ localStorage.setItem(LIB_KEY, JSON.stringify(taskLibrary)); toast('تم حفظ المكتبة'); }
+    function loadLib(){ try{ taskLibrary = JSON.parse(localStorage.getItem(LIB_KEY)||'[]')||[] }catch{ taskLibrary=[] } }
+
+    function renderLibrary(){
+      // تعبئة قائمة المشاريع
+      const sel = document.getElementById('libraryProjectSelect');
+      if(sel) {
+        sel.innerHTML = `<option value="">اختر مشروع...</option>` +
+                        allProjects.map(p => `<option value="${p.id}">${escapeHTML(p.name)}</option>`).join('');
+      }
+      // عرض الجدول
+      const tb = document.getElementById('libraryTable'); if(!tb) return; tb.innerHTML='';
+      if(!taskLibrary.length){
+        tb.innerHTML = `<tr><td colspan="4" class="muted" style="text-align:center;">لا توجد عناصر في المكتبة بعد. قم باستيراد ملف CSV.</td></tr>`; return;
+      }
+      taskLibrary.forEach((t, i)=>{
+        const roles = [];
+        if(t.roles){
+          if(t.roles.consultant) roles.push(`<strong>الاستشاري:</strong> ${escapeHTML(t.roles.consultant)}`);
+          if(t.roles.engineer) roles.push(`<strong>المهندس:</strong> ${escapeHTML(t.roles.engineer)}`);
+          if(t.roles.supervisor) roles.push(`<strong>المشرف:</strong> ${t.roles.supervisor}`);
+          if(t.roles.buyer) roles.push(`<strong>المشتريات:</strong> ${t.roles.buyer}`);
+          if(t.roles.technicalOffice) roles.push(`<strong>المكتب الفني:</strong> ${t.roles.technicalOffice}`);
+        }
+        tb.insertAdjacentHTML('beforeend', `
+          <tr>
+            <td>${(t.id ?? i+1)}</td>
+            <td>${escapeHTML(t.name||'—')}</td>
+            <td>${roles.join(' • ')||'—'}</td>
+            <td class="row" style="gap:6px">
+              <button class="btn ghost" onclick="applyTemplate(${i})" ${currentUserRole === 'consultant' ? '' : 'disabled'}>إضافة للمشروع</button>
+              <button class="btn danger" onclick="removeTemplate(${i})" ${currentUserRole === 'consultant' ? '' : 'disabled'}>حذف</button>
+            </td>
+          </tr>`);
+      });
+
+      // Update visibility of library action buttons
+      document.getElementById('importCsvBtn').style.display = (currentUserRole === 'consultant' || currentUserRole === 'technical_office' || currentUserRole === 'buyer') ? 'inline-flex' : 'none';
+      document.getElementById('saveLibBtn').style.display = (currentUserRole === 'consultant' || currentUserRole === 'technical_office' || currentUserRole === 'buyer') ? 'inline-flex' : 'none';
+      document.getElementById('exportLibBtn').style.display = (currentUserRole === 'consultant' || currentUserRole === 'technical_office' || currentUserRole === 'buyer') ? 'inline-flex' : 'none';
+      document.getElementById('clearLibBtn').style.display = (currentUserRole === 'consultant' || currentUserRole === 'technical_office' || currentUserRole === 'buyer') ? 'inline-flex' : 'none';
+      document.getElementById('applyAllBtn').style.display = (currentUserRole === 'consultant') ? 'inline-flex' : 'none';
+      const libraryProjectSelectField = document.getElementById('libraryProjectSelect');
+      if (libraryProjectSelectField) { // Check if element exists before accessing parent
+          libraryProjectSelectField.closest('.field').style.display = (currentUserRole === 'consultant') ? 'grid' : 'none';
+      }
+
+    }
+
+    function removeTemplate(index){
+      // Permission check: Only Consultant can delete templates from library
+      if (currentUserRole !== 'consultant') {
+            toast('ليس لديك صلاحية لحذف قوالب المهام من المكتبة.','danger');
+            return;
+        }
+      showModal('حذف قالب مهمة', `هل أنت متأكد من حذف هذا القالب؟`, () => {
+        taskLibrary.splice(index,1);
+        saveLib();
+        renderLibrary();
+        toast('تم حذف القالب');
+      });
+    }
+
+    async function applyAll(){
+      // Permission check: Only Consultant can apply all templates
+      if (currentUserRole !== 'consultant') {
+            toast('ليس لديك صلاحية لإضافة جميع مهام المكتبة للمشروع.','danger');
+            return;
+        }
+
+      const sel = document.getElementById('libraryProjectSelect');
+      const pid = sel ? sel.value : null;
+      if(!pid || !allProjects.find(p=>p.id===pid)){ toast('اختر مشروعًا أولاً','danger'); return; }
+      if(!taskLibrary.length){ toast('المكتبة فارغة','danger'); return; }
+
+      showLoading();
+      for(let i = 0; i < taskLibrary.length; i++){
+        await applyTemplate(i, true, pid); // Pass selected project ID
+      }
+      hideLoading();
+      toast('تمت إضافة جميع مهام المكتبة للمشروع');
+      openProject(pid); // عرض المشروع بعد الإضافة
+    }
+
+    function bestAssignee(roles){
+      // أولوية: Engineer -> Supervisor -> Consultant -> Buyer -> Technical Office
+      if(!roles) return '';
+      return roles.engineer||roles.supervisor||roles.consultant||roles.buyer||roles.technicalOffice||'';
+    }
+
+    async function applyTemplate(index, silent=false, overrideProjectId = null){
+        // Permission check: Only Consultant can apply templates
+        if (currentUserRole !== 'consultant') {
+            if(!silent) toast('ليس لديك صلاحية لإضافة قوالب المهام للمشاريع.','danger');
+            return;
+        }
+
+      const sel = document.getElementById('libraryProjectSelect');
+      const pid = overrideProjectId || (sel ? sel.value : null);
+
+      if(!pid || !allProjects.find(p=>p.id===pid)){
+        if(!silent) toast('اختر مشروعًا أولاً','danger');
+        return;
+      }
+      const tpl = taskLibrary[index];
+      const deadline = new Date();
+      deadline.setDate(deadline.getDate()+7); // Default deadline 7 days from now
+
+      const descLines = [];
+      if(tpl.roles){
+        descLines.push('الأدوار:');
+        if(tpl.roles.consultant) descLines.push(`- الاستشاري: ${tpl.roles.consultant}`);
+        if(tpl.roles.engineer) descLines.push(`- المهندس: ${tpl.roles.engineer}`);
+        if(tpl.roles.supervisor) descLines.push(`- المشرف: ${tpl.roles.supervisor}`);
+        if(tpl.roles.buyer) descLines.push(`- المشتريات: ${tpl.roles.buyer}`);
+        if(tpl.roles.technicalOffice) descLines.push(`- المكتب الفني: ${tpl.roles.technicalOffice}`);
+      }
+
+      const newTaskData = {
+        name: tpl.name || 'مهمة بدون اسم',
+        projectId: pid,
+        assignee: bestAssignee(tpl.roles), // Assignee will be a human-readable name, not UID
+        status: 'جاري',
+        priority: 'med', // Default priority
+        deadline: deadline.toISOString().slice(0,10),
+        description: descLines.join('\n')
+      };
+      await saveTask(newTaskData, true); // Save as new task
+
+      if(!silent) toast('تمت إضافة المهمة إلى المشروع');
+    }
+
+    // ======= CSV Import/Export =======
+    function parseCSV(text) {
+        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+        return lines.map(line => {
+            // Simple CSV parser for comma-separated values, handling quoted fields
+            const regex = /(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|([^,\"]*))/g;
+            let match;
+            const row = [];
+            while ((match = regex.exec(line)) !== null) {
+                // If a quoted group exists, use it (and replace double quotes with single)
+                // Otherwise, use the unquoted group
+                row.push(match[1] !== undefined ? match[1].replace(/\"\"/g, '\"') : match[2]);
+            }
+            return row;
+        });
+    }
+
+    function normalizeHeader(header) {
+      return header.trim().toLowerCase().replace(/[\s-]/g, '');
+    }
+
+    // No direct onclick for importCsvBtn, it triggers csvFile.click()
+    document.getElementById('importCsvBtn').onclick = () => document.getElementById('csvFile').click();
+    document.getElementById('csvFile').onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        // Permission check: Consultant, Buyer, Technical Office can import CSV
+        if (currentUserRole !== 'consultant' && currentUserRole !== 'technical_office' && currentUserRole !== 'buyer') {
+            toast('ليس لديك صلاحية لاستيراد ملفات CSV.','danger');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = e => {
+          try {
+            const text = e.target.result;
+            const rows = parseCSV(text);
+            if (!rows.length) { toast('ملف CSV فارغ', 'danger'); return; }
+
+            const header = rows[0].map(normalizeHeader);
+            const validHeaders = ['id', 'name', 'taskname', 'task', 'roles', 'consultant', 'engineer', 'supervisor', 'buyer', 'technicaloffice'];
+
+            // Check if any required headers are missing
+            const hasValidTaskName = header.some(h => ['name', 'taskname', 'task'].includes(h));
+            if (!hasValidTaskName) {
+                toast('الملف يجب أن يحتوي على عمود للمهمة (مثل "Name" أو "Task")', 'danger');
+                return;
+            }
+
+            const newTasks = [];
+            for(let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const task = {};
+                let hasData = false;
+                task.roles = {};
+
+                for (let j = 0; j < header.length; j++) {
+                    const h = header[j];
+                    const value = row[j] ? row[j].trim() : '';
+
+                    if (value) hasData = true;
+
+                    if (h === 'id') task.id = value;
+                    else if (['name', 'taskname', 'task'].includes(h)) task.name = value;
+                    else if (h === 'consultant') task.roles.consultant = value;
+                    else if (h === 'engineer') task.roles.engineer = value;
+                    else if (h === 'supervisor') task.roles.supervisor = value;
+                    else if (h === 'buyer') task.roles.buyer = value;
+                    else if (h === 'technicaloffice') task.roles.technicalOffice = value;
+                    // Add more mappings if needed
+                }
+                if (hasData) { // Only add if row has some data
+                    newTasks.push(task);
+                }
+            }
+
+            if(newTasks.length === 0){
+              toast('لا توجد مهام صالحة في ملف CSV', 'danger');
+              return;
+            }
+
+            taskLibrary = newTasks; // Replace existing library
+            saveLib();
+            renderLibrary();
+            toast(`تم استيراد ${newTasks.length} مهمة من ملف CSV.`);
+          } catch (error) {
+            console.error("Error processing CSV:", error);
+            toast('حدث خطأ أثناء معالجة ملف CSV. تأكد من التنسيق الصحيح (UTF-8).', 'danger');
+          }
+        };
+        reader.onerror = () => {
+          toast('حدث خطأ أثناء قراءة الملف', 'danger');
+        };
+        reader.readAsText(file);
+      }
+    };
+
+    document.getElementById('saveLibBtn').onclick = saveLib;
+    document.getElementById('clearLibBtn').onclick = () => {
+      // Permission check
+      if (currentUserRole !== 'consultant' && currentUserRole !== 'technical_office' && currentUserRole !== 'buyer') {
+            toast('ليس لديك صلاحية لتفريغ المكتبة.','danger');
+            return;
+        }
+      showModal('تفريغ المكتبة', `هل أنت متأكد من تفريغ مكتبة المهام؟`, () => {
+        taskLibrary = [];
+        saveLib();
+        renderLibrary();
+        toast('تم تفريغ المكتبة');
+      });
+    };
+
+    document.getElementById('exportLibBtn').onclick = () => {
+      // Permission check
+      if (currentUserRole !== 'consultant' && currentUserRole !== 'technical_office' && currentUserRole === 'buyer') {
+            toast('ليس لديك صلاحية لتصدير المكتبة.','danger');
+            return;
+        }
+
+      if(taskLibrary.length === 0) {
+        toast('المكتبة فارغة لا يمكن تصديرها', 'warn');
+        return;
+      }
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(taskLibrary, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "task_library.json");
+      document.body.appendChild(downloadAnchorNode); // Required for Firefox
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+      toast('تم تصدير المكتبة كملف JSON');
+    };
+
+    document.getElementById('applyAllBtn').onclick = applyAll;
+
+    // ======= Reports (Placeholder - no Firebase logic here for now) =======
+    function filterReports() { toast('تصفية التقارير غير مفعلة بعد'); }
+    function exportReport() { toast('تصدير التقارير غير مفعل بعد'); }
+    function generateReport() { toast('توليد تقرير جديد غير مفعل بعد'); }
+
+
+    // ======= Initial Load =======
+    window.onload = () => {
+      loadLib(); // Load task library from local storage (not affected by Firebase Auth)
+      // The onAuthStateChanged listener will handle initial display and data loading.
+    };
+
+    // New function to update UI elements based on user role
+    function updateUIForRole() {
+        // Show/hide based on role
+        const isConsultant = (currentUserRole === 'consultant');
+        const isBuyerOrTechnicalOffice = (currentUserRole === 'buyer' || currentUserRole === 'technical_office');
+
+        // Project creation buttons
+        document.getElementById('quickAddProject').style.display = isConsultant ? 'inline-flex' : 'none';
+        document.getElementById('addProjectBtn').style.display = isConsultant ? 'inline-flex' : 'none';
+
+        // Project details page buttons
+        document.getElementById('addTaskInDetails').style.display = isConsultant ? 'inline-flex' : 'none';
+        document.getElementById('editProjectInDetails').style.display = isConsultant ? 'inline-flex' : 'none';
+        document.getElementById('deleteProjectInDetails').style.display = isConsultant ? 'inline-flex' : 'none';
+
+        // Library action buttons
+        document.getElementById('importCsvBtn').style.display = (isConsultant || isBuyerOrTechnicalOffice) ? 'inline-flex' : 'none';
+        document.getElementById('saveLibBtn').style.display = (isConsultant || isBuyerOrTechnicalOffice) ? 'inline-flex' : 'none';
+        document.getElementById('exportLibBtn').style.display = (isConsultant || isBuyerOrTechnicalOffice) ? 'inline-flex' : 'none';
+        document.getElementById('clearLibBtn').style.display = (isConsultant || isBuyerOrTechnicalOffice) ? 'inline-flex' : 'none';
+        document.getElementById('applyAllBtn').style.display = isConsultant ? 'inline-flex' : 'none';
+        const libraryProjectSelectField = document.getElementById('libraryProjectSelect');
+        if (libraryProjectSelectField) {
+            libraryProjectSelectField.closest('.field').style.display = isConsultant ? 'grid' : 'none';
+        }
+
+        // The app content is displayed once a role is chosen/set.
+        // Role selection screen is hidden.
+    }
+
+
+    // Global access for onclick functions
+    window.toggleSidebar = toggleSidebar;
+    window.showPage = showPage;
+    window.refreshDashboard = renderDashboard;
+    window.showProjectForm = showProjectForm;
+    window.cancelProjectForm = cancelProjectForm;
+    window.saveProjectForm = saveProjectForm;
+    window.openProject = openProject;
+    window.editProject = showProjectForm;
+    window.confirmDeleteProject = confirmDeleteProject;
+    window.showTaskForm = showTaskForm;
+    window.cancelTaskForm = cancelTaskForm;
+    window.saveTaskForm = saveTaskForm;
+    window.editTask = editTask;
+    window.confirmDeleteTask = confirmDeleteTask; // Fixed typo here
+    window.renderLibrary = renderLibrary;
+    window.removeTemplate = removeTemplate;
+    window.applyTemplate = applyTemplate;
+    window.applyAll = applyAll;
+    window.saveLib = saveLib;
+    window.loadLib = loadLib;
+    window.filterReports = filterReports;
+    window.exportReport = exportReport;
+    window.generateReport = generateReport;
+    window.closeModal = closeModal;
+    window.confirmAction = confirmAction;
+    window.toast = toast;
+    window.mapRoleToArabic = mapRoleToArabic;
+    window.openRoleChangeModal = openRoleChangeModal; // Expose new function
+    window.closeRoleChangeModal = closeRoleChangeModal; // Expose new function
+    window.saveNewRole = saveNewRole; // Expose new function
+  </script>
+</body>
+</html>
+
