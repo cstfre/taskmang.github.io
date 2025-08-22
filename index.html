@@ -372,21 +372,15 @@ form .row>*.grow{flex:1}
     // ======= Firebase Configuration and Initialization =======
     // Global variables provided by Canvas environment for Firebase
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    const firebaseConfig = {
-    apiKey: "AIzaSyCxhtlEJ7qmaEqi0dVFWXKeoeNfZRjUM44",
-    authDomain: "kids-skills-7119e.firebaseapp.com",
-    projectId: "kids-skills-7119e",
-    storageBucket: "kids-skills-7119e.firebasestorage.app",
-    messagingSenderId: "172730790601",
-    appId: "1:172730790601:web:05f81f01618809820d5318",
-    measurementId: "G-CN44PC04QP"
-  };
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
- // الكود الصحيح الذي يجب استخدامه
-// Initialize Firebase app
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+    let app, db, auth, currentUserId = null, currentUserRole = null;
+
+    // Initialize Firebase app
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
 
     // Listen for authentication state changes (this is where user ID and role are determined)
     onAuthStateChanged(auth, async (user) => {
@@ -1499,4 +1493,3 @@ form .row>*.grow{flex:1}
   </script>
 </body>
 </html>
-
